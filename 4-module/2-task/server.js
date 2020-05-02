@@ -19,9 +19,7 @@ server.on('request', (req, res) => {
   switch (req.method) {
     case 'POST':
       receiveFile(filepath, req, res);
-
       break;
-
     default:
       res.statusCode = 501;
       res.end('Not implemented');
@@ -29,36 +27,32 @@ server.on('request', (req, res) => {
 });
 
 function receiveFile(filepath, req, res) {
-  const writeStream = fs.createWriteStream(filepath, { flags: 'wx' });
-  const limitStream = new LimitSizeStream({ limit: 1e6 });
+  const writeFileStream = fs.createWriteStream(filepath, { flags: 'wx' });
+  const limitedSizeStream = new LimitSizeStream({ limit: 1e6 });
 
-  req.pipe(limitStream).pipe(writeStream);
+  req.pipe(limitedSizeStream).pipe(writeFileStream);
 
-  limitStream.on('error', (error) => {
+  limitedSizeStream.on('error', (error) => {
     if (error.code === 'LIMIT_EXCEEDED') {
       res.statusCode = 413;
-      res.end(error.message);
 
+      // remove file
       fs.unlink(filepath, () => {});
-      return;
+
+      return res.end(error.message);
     }
 
-    res.statusCode = 500;
-    res.end('Internal server error');
-
-    fs.unlink(filepath, () => {});
+    serverError(res, fs);
   });
 
-  writeStream
+  writeFileStream
     .on('error', (error) => {
       if (error.code === 'EEXIST') {
         res.statusCode = 409;
         return res.end(error.message);
       }
 
-      res.statusCode = 500;
-      res.end('Internal server error');
-      fs.unlink(filepath, () => {});
+      serverError(res, fs);
     })
     .on('close', () => {
       res.statusCode = 201;
@@ -67,8 +61,19 @@ function receiveFile(filepath, req, res) {
 
   res.on('close', () => {
     if (res.finished) return;
+
+    limitedSizeStream.destroy();
+    writeFileStream.destroy();
+
     fs.unlink(filepath, () => {});
   });
+}
+
+function serverError(res, fs) {
+  res.statusCode = 500;
+  res.end('Internal server error');
+
+  fs.unlink(filepath, () => {});
 }
 
 module.exports = server;
