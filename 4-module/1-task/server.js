@@ -1,6 +1,7 @@
 const url = require('url');
 const http = require('http');
 const path = require('path');
+const fs = require('fs');
 
 const server = new http.Server();
 
@@ -11,6 +12,21 @@ server.on('request', (req, res) => {
 
   switch (req.method) {
     case 'GET':
+      const nestedPathName = pathname.split('/');
+      if (nestedPathName.length > 1) {
+        res.statusCode = 400;
+        return res.end();
+      }
+
+      fs.readFile(filepath, (error, data) => {
+        if (error || !data) {
+          res.statusCode = 404;
+          return res.end();
+        }
+        if (data) {
+          res.end(data);
+        }
+      });
 
       break;
 
