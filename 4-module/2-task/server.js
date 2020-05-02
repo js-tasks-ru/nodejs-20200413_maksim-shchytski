@@ -55,12 +55,15 @@ function receiveFile(filepath, req, res) {
       serverError(res, fs);
     })
     .on('close', () => {
+      writeFileStream.end();
       res.statusCode = 201;
       res.end('File created');
     });
 
   res.on('close', () => {
-    if (res.finished) return;
+    if (res.finished) {
+      return;
+    }
 
     limitedSizeStream.destroy();
     writeFileStream.destroy();
@@ -73,6 +76,7 @@ function serverError(res, fs) {
   res.statusCode = 500;
   res.end('Internal server error');
 
+  // remove file anyway;
   fs.unlink(filepath, () => {});
 }
 
