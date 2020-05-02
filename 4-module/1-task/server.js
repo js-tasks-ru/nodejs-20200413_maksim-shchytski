@@ -18,7 +18,7 @@ server.on('request', (req, res) => {
         return res.end();
       }
 
-      const result = fs.readFile(filepath, (error, data) => {
+      fs.readFile(filepath, (error, data) => {
         if (error || !data) {
           res.statusCode = 404;
           return res.end();
